@@ -1,5 +1,3 @@
-mod command_handler;
-
 use std::{collections::HashMap, time::Duration};
 
 use tokio::{task, time::sleep};
