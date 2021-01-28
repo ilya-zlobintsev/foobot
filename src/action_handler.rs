@@ -14,9 +14,9 @@ use crate::{
 
 use self::weather::WeatherError;
 pub mod spotify;
-pub mod weather;
-pub mod translate;
 mod sys;
+pub mod translate;
+pub mod weather;
 
 #[derive(Clone, Debug)]
 pub enum Action {
@@ -35,14 +35,17 @@ pub struct ActionHandler {
     twitch_api: TwitchApi,
     weather_handler: WeatherHandler,
     spotify_handler: SpotifyHandler,
-    translator: TranslationHandler
+    translator: TranslationHandler,
 }
 
 impl ActionHandler {
     pub fn new(db_conn: DBConn, twitch_api: TwitchApi) -> Self {
         let weather_handler = WeatherHandler::new(db_conn.get_openweathermap_api_key().unwrap());
         let translator = TranslationHandler::new();
-        let spotify_handler = SpotifyHandler::new(db_conn.get_spotify_cilent_id().unwrap(), db_conn.get_spotify_client_secret().unwrap());
+        let spotify_handler = SpotifyHandler::new(
+            db_conn.get_spotify_cilent_id().unwrap(),
+            db_conn.get_spotify_client_secret().unwrap(),
+        );
 
         Self {
             db_conn,
@@ -64,6 +67,7 @@ impl ActionHandler {
 
         match action {
             "spotify" => Ok(Some(self.get_spotify(channel).await?)),
+            "lastsong" => Ok(Some(self.get_spotify_last_song(channel).await?)),
             "hitman" => Ok(Some(
                 self.hitman(channel, args.first().unwrap(), client).await?,
             )),
@@ -87,10 +91,39 @@ impl ActionHandler {
 
     async fn get_spotify(&self, channel: &str) -> Result<String, CommandHandlerError> {
         match self.db_conn.get_spotify_access_token(channel) {
-            Ok((access_token, _)) => match self.spotify_handler.get_current_song(&access_token).await? {
-                Some(song) => Ok(song),
-                None => Ok(String::from("no song is currently playing")),
+            Ok((access_token, _)) => {
+                match self.spotify_handler.get_current_song(&access_token).await? {
+                    Some(song) => Ok(song),
+                    None => Ok(String::from("no song is currently playing")),
+                }
+            }
+            Err(e) => match e {
+                DBConnError::NotFound => Ok(String::from("not configured for this channel")),
+                _ => Err(CommandHandlerError::DBError(e)),
             },
+        }
+    }
+
+    async fn get_spotify_last_song(&self, channel: &str) -> Result<String, CommandHandlerError> {
+        match self.db_conn.get_spotify_access_token(channel) {
+            Ok((access_token, _)) => {
+                match self
+                    .spotify_handler
+                    .get_recently_played(&access_token)
+                    .await
+                {
+                    Ok(recently_played) => {
+                        let last_track = &recently_played.items.first().unwrap().track;
+
+                        Ok(format!(
+                            "{} - {}",
+                            last_track.artists.first().unwrap().name,
+                            last_track.name
+                        ))
+                    }
+                    Err(e) => Ok(format!("error getting last song: {:?}", e)),
+                }
+            }
             Err(e) => match e {
                 DBConnError::NotFound => Ok(String::from("not configured for this channel")),
                 _ => Err(CommandHandlerError::DBError(e)),
@@ -170,10 +203,13 @@ impl ActionHandler {
             },
         }
     }
-    
+
     async fn translate(&self, text: &str) -> Result<String, CommandHandlerError> {
         match self.translator.translate(text).await {
-            Ok(translation) => Ok(format!("{} -> {}: {}", translation.src, translation.dest, translation.text)),
+            Ok(translation) => Ok(format!(
+                "{} -> {}: {}",
+                translation.src, translation.dest, translation.text
+            )),
             Err(e) => Ok(format!("error when translating: {:?}", e)),
         }
     }
