@@ -84,7 +84,7 @@ impl PubSubHandler {
 
         task::spawn(async move {
             loop {
-                println!("Pubsub: sending ping");
+                // println!("Pubsub: sending ping");
                 match write.send(Message::Ping(vec![].into())).await {
                     Ok(_) => sleep(Duration::from_secs(60)).await,
                     Err(_) => break,
@@ -99,8 +99,8 @@ impl PubSubHandler {
                 while let Some(msg) = read.next().await {
                     match msg {
                         Ok(msg) => match msg {
-                            Message::Ping(_) => println!("Pubsub: recieved PING"),
-                            Message::Pong(_) => println!("Pubsub: recieved PONG"),
+                            // Message::Ping(_) => println!("Pubsub: recieved PING"),
+                            // Message::Pong(_) => println!("Pubsub: recieved PONG"),
                             Message::Text(text) => {
                                 // println!("Pubsub message: {}", text);
                                 if let Ok(v) = serde_json::from_str::<Value>(&text) {

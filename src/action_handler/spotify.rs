@@ -78,6 +78,8 @@ impl SpotifyHandler {
             .await?
             .json()
             .await?;
+        
+        // println!("{:?}", response);
 
         Ok((
             response["access_token"].as_str().unwrap().to_string(),
