@@ -18,3 +18,4 @@ mysql = ""
 reqwest = { version = "0.11", features = ["json"] }
 tokio-tungstenite = { version = "0.13", features = ["tls"] }
 futures-util = ""
+psutil = "3.2"

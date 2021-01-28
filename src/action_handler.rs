@@ -16,6 +16,7 @@ use self::weather::WeatherError;
 pub mod spotify;
 pub mod weather;
 pub mod translate;
+mod sys;
 
 #[derive(Clone, Debug)]
 pub enum Action {
@@ -70,7 +71,7 @@ impl ActionHandler {
                 self.bodyguard(channel, args.first().unwrap(), client)
                     .await?,
             )),
-            "ping" => Ok(Some(String::from("pong!"))),
+            "ping" => Ok(Some(sys::SysInfo::ping())),
             "commercial" => Ok(Some(
                 self.run_ad(channel, args.first().unwrap().parse().unwrap())
                     .await?,
