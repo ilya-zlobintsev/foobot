@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use spotify::SpotifyHandler;
-use tokio::time::sleep;
-use translate::{TranslationHandler, TranslationResponse};
+use tokio::{task, time::sleep};
+use translate::TranslationHandler;
 use twitch_irc::{login::StaticLoginCredentials, TCPTransport, TwitchIRCClient};
 use weather::WeatherHandler;
 
@@ -82,6 +82,15 @@ impl ActionHandler {
             )),
             "weather" => Ok(Some(self.get_weather(args.first().unwrap()).await?)),
             "translate" => Ok(Some(self.translate(args.first().unwrap()).await?)),
+            "emoteonly" => match args.first().unwrap().parse::<u64>() {
+                Ok(duration) => {
+                    self.emote_only(channel, duration, client).await;
+                    Ok(None)
+                }
+                Err(_) => Err(CommandHandlerError::ExecutionError(String::from(
+                    "invalid duration",
+                ))),
+            },
             _ => Err(CommandHandlerError::ExecutionError(format!(
                 "unknown action {}",
                 action
@@ -180,6 +189,25 @@ impl ActionHandler {
             .expect("failed to say");
 
         Ok(String::new())
+    }
+
+    async fn emote_only(
+        &self,
+        channel: &str,
+        duration: u64,
+        client: &TwitchIRCClient<TCPTransport, StaticLoginCredentials>,
+    ) {
+        client.say(channel.to_string(), format!("Emote-only enabled for {} seconds!", duration)).await.expect("Failed to say");
+
+        client
+            .privmsg(channel.to_string(), "/emoteonly".to_string())
+            .await
+            .expect("Failed to write");
+        sleep(Duration::from_secs(duration)).await;
+        client
+            .privmsg(channel.to_string(), "/emoteonlyoff".to_string())
+            .await
+            .expect("Failed to write");
     }
 
     async fn run_ad(&self, channel: &str, duration: u8) -> Result<String, CommandHandlerError> {

@@ -123,6 +123,8 @@ impl WeatherHandler {
         
         let response: Value = self.client.get(&url).send().await?.json().await?;
         
+        log::trace!("{:?}", response);
+        
         match response["cod"].to_string().as_str() {
             "200" => Ok(serde_json::from_value(response)?),
             "\"404\"" => Err(WeatherError::InvalidLocation),

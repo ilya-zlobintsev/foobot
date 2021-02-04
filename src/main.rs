@@ -18,6 +18,8 @@ use tokio::fs;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    env_logger::init();
+
     let db_config_json = fs::read_to_string("config.json").await?;
     let db_config = DBConfig::from_json(&db_config_json)?;
     

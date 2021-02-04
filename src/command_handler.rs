@@ -1,4 +1,5 @@
 use anyhow::Result;
+use mysql::prelude::TextQuery;
 use twitch_irc::{login::StaticLoginCredentials, TCPTransport, TwitchIRCClient};
 
 use crate::{
@@ -42,6 +43,7 @@ pub enum CommandHandlerError {
     ExecutionError(String),
     WriterError(std::io::Error),
     ReqwestError(reqwest::Error),
+    IRCError(String),
     InvalidPermissions,
 }
 
@@ -186,11 +188,10 @@ impl CommandHandler {
             Action::ShowCmd => {
                 if let Some(trigger) = args.first() {
                     match self.db_conn.get_command(trigger, channel)? {
-
                         Some(cmd) => match cmd.action {
                             Action::Custom(action) => Ok(Some(format!("{}", action))),
                             _ => Ok(Some(String::from("built-in command"))),
-                        }
+                        },
                         None => Ok(Some(String::from("no such command"))),
                     }
                 } else {
@@ -205,69 +206,73 @@ impl CommandHandler {
             Action::Part => Ok(None),
             Action::Custom(cmd) => {
                 let mut chars = cmd.chars();
-                'outer: while let Some(ch) = chars.next() {
-                    match ch {
-                        '{' => {
-                            let mut action = String::new();
-                            let mut action_args: Vec<String> = Vec::new();
 
-                            while let Some(ch) = chars.next() {
-                                match ch {
-                                    '}' => {
-                                        match self
-                                            .action_handler
-                                            .run(&action, &action_args, channel, &client)
-                                            .await
-                                        {
-                                            Ok(action_result) => {
-                                                //Doesn't respond with anything the action doesn't yield a result
-                                                if let Some(result) = action_result {
-                                                    response.push_str(&result);
-                                                }
-                                                continue 'outer;
-                                            }
-                                            Err(e) => return Err(e),
+                while let Some(ch) = chars.next() {
+                    if ch == '{' {
+                        let mut action = String::new();
+
+                        while let Some(ch) = chars.next() {
+                            if ch == '}' {
+                                break;
+                            }
+                            action.push(ch);
+                        }
+
+                        let split: Vec<&str> = action.split_whitespace().collect();
+                        let (action, raw_args) = split.split_first().unwrap();
+
+                        let mut action_args: Vec<String> = Vec::new();
+
+                        //Parses variables in action arguments
+                        for arg in raw_args {
+                            if let Some(var) = arg.strip_prefix("$") {
+                                match var {
+                                    //$$: Pass all command arguments
+                                    "$" => {
+                                        for arg in args {
+                                            action_args.push(arg.to_string());
                                         }
                                     }
-                                    '$' => {
-                                        if let Some(ch) = chars.next() {
-                                            println!("Getting variable {}", ch.to_string());
-                                            // Numeric variables represent command arguments e.g. `!command 1` where the command is `{action $0}` will execute `action` with the argument `1`.
-                                            if let Some(num) = ch.to_digit(10) {
-                                                if let Some(arg) = args.get(num as usize) {
-                                                    action_args.push((*arg).to_owned());
-                                                } else {
+                                    _ => {
+                                        //Arguments that take positional arguments of the command, such as $0
+                                        if let Some(num) = var.chars().next().unwrap().to_digit(10)
+                                        {
+                                            match args.get(num as usize) {
+                                                Some(arg) => action_args.push(arg.to_string()),
+                                                None => {
                                                     return Err(
                                                         CommandHandlerError::ExecutionError(
-                                                            String::from("missing argument"),
+                                                            format!(
+                                                                "missing argument index {}",
+                                                                num
+                                                            ),
                                                         ),
-                                                    );
+                                                    )
                                                 }
-                                            // `$$` will pass all command arguments to the action as a single argument.
-                                            } else if ch == "$".chars().next().unwrap() {
-                                                action_args.push(args.join(" "));
-                                            } else {
-                                                return Err(CommandHandlerError::ExecutionError(
-                                                    String::from("invalid variable"),
-                                                ));
                                             }
-                                        } else {
-                                            return Err(CommandHandlerError::ExecutionError(
-                                                String::from("missing variable"),
-                                            ));
                                         }
                                     }
-                                    ' ' => continue,
-                                    _ => action.push(ch),
                                 }
+                            } else {
+                                action_args.push(arg.to_string());
                             }
-                            return Err(CommandHandlerError::ExecutionError(String::from(
-                                "closing } not found",
-                            )));
                         }
-                        _ => response.push(ch),
+
+                        match self
+                            .action_handler
+                            .run(action, &action_args, channel, &client)
+                            .await
+                        {
+                            Ok(Some(action_response)) => response.push_str(&action_response),
+                            //Don't respond with anything if the action doesn't produce anything
+                            Ok(None) => (),
+                            Err(e) => return Err(e),
+                        }
+                    } else {
+                        response.push(ch);
                     }
                 }
+
                 if !response.is_empty() {
                     Ok(Some(response))
                 } else {
