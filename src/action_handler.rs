@@ -80,7 +80,10 @@ impl ActionHandler {
                 self.run_ad(channel, args.first().unwrap().parse().unwrap())
                     .await?,
             )),
-            "weather" => Ok(Some(self.get_weather(args.first().unwrap()).await?)),
+            "weather" => Ok(match args.first() {
+                Some(location) => Some(self.get_weather(location).await?),
+                None => Some(String::from("location not specified")),
+            }),
             "translate" => Ok(Some(self.translate(args.first().unwrap()).await?)),
             "emoteonly" => match args.first().unwrap().parse::<u64>() {
                 Ok(duration) => {
@@ -197,7 +200,13 @@ impl ActionHandler {
         duration: u64,
         client: &TwitchIRCClient<TCPTransport, StaticLoginCredentials>,
     ) {
-        client.say(channel.to_string(), format!("Emote-only enabled for {} seconds!", duration)).await.expect("Failed to say");
+        client
+            .say(
+                channel.to_string(),
+                format!("Emote-only enabled for {} seconds!", duration),
+            )
+            .await
+            .expect("Failed to say");
 
         client
             .privmsg(channel.to_string(), "/emoteonly".to_string())

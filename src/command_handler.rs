@@ -250,6 +250,10 @@ impl CommandHandler {
                                                     )
                                                 }
                                             }
+                                        } else {
+                                            return Err(CommandHandlerError::ExecutionError(
+                                                "invalid variable".to_string(),
+                                            ));
                                         }
                                     }
                                 }
