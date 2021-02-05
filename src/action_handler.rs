@@ -80,9 +80,9 @@ impl ActionHandler {
                 self.run_ad(channel, args.first().unwrap().parse().unwrap())
                     .await?,
             )),
-            "weather" => Ok(match args.first() {
-                Some(location) => Some(self.get_weather(location).await?),
-                None => Some(String::from("location not specified")),
+            "weather" => Ok(match args.is_empty() {
+                false => Some(self.get_weather(&args.join(" ")).await?),
+                true => Some(String::from("location not specified")),
             }),
             "translate" => Ok(Some(self.translate(args.first().unwrap()).await?)),
             "emoteonly" => match args.first().unwrap().parse::<u64>() {
@@ -230,7 +230,7 @@ impl ActionHandler {
             Ok(weather) => Ok(format!(
                 "{}, {}: {}°C, {}",
                 weather.name,
-                weather.sys.country.unwrap(),
+                weather.sys.country.unwrap_or_default(),
                 weather.main.temp,
                 weather.weather.first().unwrap().description
             )),
