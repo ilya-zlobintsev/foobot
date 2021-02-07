@@ -220,9 +220,13 @@ impl ActionHandler {
     }
 
     async fn run_ad(&self, channel: &str, duration: u8) -> Result<String, CommandHandlerError> {
-        println!("{}", self.twitch_api.run_ad(channel, duration).await?);
-
-        Ok(String::new())
+        if duration == 60 || duration == 120 || duration == 180 {
+            self.twitch_api.run_ad(channel, duration).await?;
+            Ok(format!("Running an ad for {} seconds", duration))
+        }
+        else {
+            Ok(String::from("Invalid ad duration"))
+        }
     }
 
     async fn get_weather(&self, location: &str) -> Result<String, CommandHandlerError> {
