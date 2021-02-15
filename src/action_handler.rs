@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use spotify::SpotifyHandler;
-use tokio::{task, time::sleep};
+use tokio::time::sleep;
 use translate::TranslationHandler;
 use twitch_irc::{login::StaticLoginCredentials, TCPTransport, TwitchIRCClient};
 use weather::WeatherHandler;
@@ -68,13 +68,14 @@ impl ActionHandler {
         match action {
             "spotify" => Ok(Some(self.get_spotify(channel).await?)),
             "lastsong" => Ok(Some(self.get_spotify_last_song(channel).await?)),
-            "hitman" => Ok(Some(
-                self.hitman(channel, args.first().unwrap(), client).await?,
-            )),
-            "bodyguard" => Ok(Some(
-                self.bodyguard(channel, args.first().unwrap(), client)
-                    .await?,
-            )),
+            "hitman" => Ok(match args.first() {
+                Some(name) => Some(self.hitman(channel, &name.replace('@', ""), client).await?),
+                None => Some(String::from("user not specified")),
+            }),
+            "bodyguard" => Ok(match args.first() {
+                Some(name) => Some(self.bodyguard(channel, &name.replace('@', ""), client).await?),
+                None => Some(String::from("user not specified")),
+            }),
             "ping" => Ok(Some(sys::SysInfo::ping())),
             "commercial" => Ok(Some(
                 self.run_ad(channel, args.first().unwrap().parse().unwrap())
@@ -223,8 +224,7 @@ impl ActionHandler {
         if duration == 60 || duration == 120 || duration == 180 {
             self.twitch_api.run_ad(channel, duration).await?;
             Ok(format!("Running an ad for {} seconds", duration))
-        }
-        else {
+        } else {
             Ok(String::from("Invalid ad duration"))
         }
     }
