@@ -316,23 +316,51 @@ impl DBConn {
 
         Ok(conn.query("SELECT channel, refresh_token FROM spotify")?)
     }
-    
+
     pub fn get_openweathermap_api_key(&self) -> Result<String, DBConnError> {
         let mut conn = self.pool.get_conn()?;
 
-        Ok(conn.query_first("SELECT value FROM settings WHERE option = \"openweathermap\"")?.unwrap_or_default())
+        Ok(conn
+            .query_first("SELECT value FROM settings WHERE option = \"openweathermap\"")?
+            .unwrap_or_default())
     }
 
     pub fn get_spotify_cilent_id(&self) -> Result<String, DBConnError> {
         let mut conn = self.pool.get_conn()?;
 
-        Ok(conn.query_first("select value from settings where option = \"spotify_clientid\"")?.unwrap_or_default())
+        Ok(conn
+            .query_first("select value from settings where option = \"spotify_clientid\"")?
+            .unwrap_or_default())
     }
 
     pub fn get_spotify_client_secret(&self) -> Result<String, DBConnError> {
         let mut conn = self.pool.get_conn()?;
 
-        Ok(conn.query_first("select value from settings where option = \"spotify_clientsecret\"")?.unwrap_or_default())
+        Ok(conn
+            .query_first("select value from settings where option = \"spotify_clientsecret\"")?
+            .unwrap_or_default())
     }
 
+    pub fn increment_currency(&self, username: &str) -> Result<(), DBConnError> {
+        let mut conn = self.pool.get_conn()?;
+
+        Ok(conn.exec_drop("INSERT INTO currency VALUES (:username, 1) ON DUPLICATE KEY UPDATE amount = amount + 1", 
+            params! {
+                "username" => username,
+            })?)
+    }
+
+    pub fn get_currency(&self, username: &str) -> Result<i32, DBConnError> {
+        let mut conn = self.pool.get_conn()?;
+
+        match conn.exec_first(
+            "SELECT amount FROM currency WHERE user = :username",
+            params! {
+                "username" => username,
+            },
+        )? {
+            Some(amount) => Ok(amount),
+            None => Ok(0),
+        }
+    }
 }

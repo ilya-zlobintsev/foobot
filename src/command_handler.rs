@@ -1,5 +1,4 @@
 use anyhow::Result;
-use mysql::prelude::TextQuery;
 use twitch_irc::{login::StaticLoginCredentials, TCPTransport, TwitchIRCClient};
 
 use crate::{
@@ -145,6 +144,7 @@ impl CommandHandler {
         cmd: &Command,
         args: &[&str],
         channel: &str,
+        runner: &str,
         client: TwitchIRCClient<TCPTransport, StaticLoginCredentials>,
     ) -> Result<Option<String>, CommandHandlerError> {
         let mut response = String::new();
@@ -234,8 +234,12 @@ impl CommandHandler {
                                         }
                                     }
                                     _ => {
+                                        if var == "user" {
+                                            action_args.push(runner.to_string());
+                                        }
                                         //Arguments that take positional arguments of the command, such as $0
-                                        if let Some(num) = var.chars().next().unwrap().to_digit(10)
+                                        else if let Some(num) =
+                                            var.chars().next().unwrap().to_digit(10)
                                         {
                                             match args.get(num as usize) {
                                                 Some(arg) => action_args.push(arg.to_string()),

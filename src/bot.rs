@@ -103,7 +103,7 @@ impl Bot {
                             if Self::check_command_permissions(&pm, &cmd.permissions) {
                                 println!("Executing {:?}", cmd.action);
 
-                                match command_handler.run_command(&cmd, arguments, &pm.channel_login, client.clone()).await {
+                                match command_handler.run_command(&cmd, arguments, &pm.channel_login, &pm.sender.login, client.clone()).await {
                                     Ok(execution) => {
                                         if let Some(response) = execution {
                                             println!("Responding with {}", response);

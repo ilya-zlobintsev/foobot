@@ -73,7 +73,10 @@ impl ActionHandler {
                 None => Some(String::from("user not specified")),
             }),
             "bodyguard" => Ok(match args.first() {
-                Some(name) => Some(self.bodyguard(channel, &name.replace('@', ""), client).await?),
+                Some(name) => Some(
+                    self.bodyguard(channel, &name.replace('@', ""), client)
+                        .await?,
+                ),
                 None => Some(String::from("user not specified")),
             }),
             "ping" => Ok(Some(sys::SysInfo::ping())),
@@ -94,6 +97,21 @@ impl ActionHandler {
                 Err(_) => Err(CommandHandlerError::ExecutionError(String::from(
                     "invalid duration",
                 ))),
+            },
+            "increment" => match args.first() {
+                Some(username) => {
+                    self.db_conn.increment_currency(username)?;
+                    Ok(None)
+                }
+                None => Err(CommandHandlerError::ExecutionError(
+                    "Missing username".to_string(),
+                )),
+            },
+            "currency" => match args.first() {
+                Some(username) => Ok(Some(self.db_conn.get_currency(username)?.to_string())),
+                None => Err(CommandHandlerError::ExecutionError(
+                    "Missing username".to_string(),
+                )),
             },
             _ => Err(CommandHandlerError::ExecutionError(format!(
                 "unknown action {}",

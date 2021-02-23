@@ -97,12 +97,12 @@ impl PubSubHandler {
             let handler = self.clone();
             task::spawn(async move {
                 while let Some(msg) = read.next().await {
+                    log::trace!("Pubsub message: {:?}", msg);
                     match msg {
                         Ok(msg) => match msg {
                             // Message::Ping(_) => println!("Pubsub: recieved PING"),
                             // Message::Pong(_) => println!("Pubsub: recieved PONG"),
                             Message::Text(text) => {
-                                // println!("Pubsub message: {}", text);
                                 if let Ok(v) = serde_json::from_str::<Value>(&text) {
                                     let handler = handler.clone();
                                     let client = client.clone();
@@ -120,7 +120,7 @@ impl PubSubHandler {
             })
             .await?;
         }
-        
+
         Ok(())
     }
 
@@ -175,6 +175,7 @@ impl PubSubHandler {
                                             },
                                             &args,
                                             channel,
+                                            &redeem.data.redemption.user.login,
                                             client.clone(),
                                         )
                                         .await
