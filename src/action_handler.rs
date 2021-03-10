@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use serde::ser::{Serialize, Serializer};
 use spotify::SpotifyHandler;
 use tokio::{sync::mpsc::Sender, time::sleep};
 use translate::TranslationHandler;
@@ -27,6 +28,20 @@ pub enum Action {
     ListCmd,
     Join,
     Part,
+}
+
+impl Serialize for Action {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let action = match self {
+            Action::Custom(custom) => custom,
+            _ => "Unsupported type",
+        };
+
+        serializer.serialize_str(action)
+    }
 }
 
 #[derive(Clone)]
@@ -223,22 +238,31 @@ impl ActionHandler {
     }
 
     async fn emote_only(&self, channel: &str, duration: u64, msg_sender: Sender<SendMsg>) {
-        msg_sender.send(SendMsg::Say((
-            channel.to_string(),
-            format!("Emote-only enabled for {} seconds!", duration),
-        ))).await.unwrap();
+        msg_sender
+            .send(SendMsg::Say((
+                channel.to_string(),
+                format!("Emote-only enabled for {} seconds!", duration),
+            )))
+            .await
+            .unwrap();
 
-        msg_sender.send(SendMsg::Raw((
-            channel.to_string(),
-            "/emoteonly".to_string(),
-        ))).await.unwrap();
+        msg_sender
+            .send(SendMsg::Raw((
+                channel.to_string(),
+                "/emoteonly".to_string(),
+            )))
+            .await
+            .unwrap();
 
         sleep(Duration::from_secs(duration)).await;
 
-        msg_sender.send(SendMsg::Raw((
-            channel.to_string(),
-            "/emoteonlyoff".to_string(),
-        ))).await.unwrap();
+        msg_sender
+            .send(SendMsg::Raw((
+                channel.to_string(),
+                "/emoteonlyoff".to_string(),
+            )))
+            .await
+            .unwrap();
     }
 
     async fn run_ad(&self, channel: &str, duration: u8) -> Result<String, CommandHandlerError> {

@@ -1,7 +1,13 @@
 use anyhow::Result;
+use serde::ser::{Serialize, Serializer};
 use tokio::sync::mpsc::Sender;
 
-use crate::{action_handler::{Action, ActionHandler}, bot::SendMsg, db::{DBConn, DBConnError}, twitch_api::TwitchApi};
+use crate::{
+    action_handler::{Action, ActionHandler},
+    bot::SendMsg,
+    db::{DBConn, DBConnError},
+    twitch_api::TwitchApi,
+};
 
 #[derive(Clone, Debug)]
 pub enum Permissions {
@@ -9,6 +15,22 @@ pub enum Permissions {
     Subs,
     Mods,
     Super,
+}
+
+impl Serialize for Permissions {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let permission = match self {
+            Permissions::All => "Everyone",
+            Permissions::Subs => "Subscribers",
+            Permissions::Mods => "Moderators",
+            Permissions::Super => "Owner",
+        };
+
+        serializer.serialize_str(permission)
+    }
 }
 
 impl Permissions {
@@ -21,15 +43,6 @@ impl Permissions {
             _ => Err(CommandHandlerError::InvalidPermissions),
         }
     }
-
-    // pub fn to_string(&self) -> String {
-    //     match self {
-    //         Permissions::All => String::from("all"),
-    //         Permissions::Subs => String::from("subs"),
-    //         Permissions::Mods => String::from("mods"),
-    //         Permissions::Super => String::from("super"),
-    //     }
-    // }
 }
 
 #[derive(Debug)]
@@ -38,7 +51,6 @@ pub enum CommandHandlerError {
     ExecutionError(String),
     WriterError(std::io::Error),
     ReqwestError(reqwest::Error),
-    IRCError(String),
     InvalidPermissions,
 }
 
@@ -60,7 +72,7 @@ impl From<reqwest::Error> for CommandHandlerError {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Clone, Debug)]
 pub struct Command {
     pub trigger: String,
     pub action: Action,
@@ -109,7 +121,7 @@ impl CommandHandler {
             })),
             "help" | "commands" => Ok(Some(Command {
                 trigger: String::from("commands"),
-                action: Action::ListCmd,
+                action: Action::Custom(format!("https://bot.endpoint.ml/commands/{}", channel)),
                 channel: String::from(channel),
                 permissions: Permissions::All,
             })),
@@ -141,7 +153,7 @@ impl CommandHandler {
         args: &[&str],
         channel: &str,
         runner: &str,
-        msg_sender: Sender<SendMsg>
+        msg_sender: Sender<SendMsg>,
     ) -> Result<Option<String>, CommandHandlerError> {
         let mut response = String::new();
 

@@ -14,7 +14,7 @@ impl SysInfo {
             .unwrap()
             .current()
             .celsius()
-            .round();                                                                
+            .round();
 
         let virtual_memory = psutil::memory::virtual_memory().unwrap();
         let ram_usage = format!(
@@ -24,7 +24,7 @@ impl SysInfo {
         );
 
         let uptime_mins = psutil::host::uptime().unwrap().as_secs() / 60;
-        
+
         let minutes = uptime_mins % 60;
         let hours = uptime_mins / 60;
 

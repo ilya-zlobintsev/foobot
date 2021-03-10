@@ -16,8 +16,14 @@ pub struct JobRunner {
 
 impl JobRunner {
     pub fn new(db_pool: DBConn) -> Self {
-        let spotify_handler = SpotifyHandler::new(db_pool.get_spotify_cilent_id().unwrap(), db_pool.get_spotify_client_secret().unwrap());
-        JobRunner { db_pool, spotify_handler }
+        let spotify_handler = SpotifyHandler::new(
+            db_pool.get_spotify_cilent_id().unwrap(),
+            db_pool.get_spotify_client_secret().unwrap(),
+        );
+        JobRunner {
+            db_pool,
+            spotify_handler,
+        }
     }
 
     pub async fn start(&self) -> Result<(), DBConnError> {

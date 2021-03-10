@@ -100,7 +100,6 @@ impl From<serde_json::Error> for WeatherError {
     }
 }
 
-
 #[derive(Clone)]
 pub struct WeatherHandler {
     client: Client,
@@ -120,11 +119,11 @@ impl WeatherHandler {
             "https://api.openweathermap.org/data/2.5/weather?q={}&appid={}&units=metric",
             location, self.api_key
         );
-        
+
         let response: Value = self.client.get(&url).send().await?.json().await?;
-        
+
         log::trace!("{:?}", response);
-        
+
         match response["cod"].to_string().as_str() {
             "200" => Ok(serde_json::from_value(response)?),
             "\"404\"" => Err(WeatherError::InvalidLocation),

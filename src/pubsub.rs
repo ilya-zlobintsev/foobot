@@ -9,7 +9,13 @@ use serde_json::{json, Value};
 use tokio::{sync::mpsc::Sender, task, time::sleep};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
-use crate::{action_handler::Action, bot::SendMsg, command_handler::{Command, CommandHandler}, db::DBConn, twitch_api::TwitchApi};
+use crate::{
+    action_handler::Action,
+    bot::SendMsg,
+    command_handler::{Command, CommandHandler},
+    db::DBConn,
+    twitch_api::TwitchApi,
+};
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -46,7 +52,7 @@ impl PubSubHandler {
     pub async fn start(
         &self,
         channels: &Vec<String>,
-        msg_sender: Sender<SendMsg>
+        msg_sender: Sender<SendMsg>,
     ) -> anyhow::Result<()> {
         let mut topics: Vec<String> = Vec::new();
 
@@ -117,11 +123,7 @@ impl PubSubHandler {
         Ok(())
     }
 
-    async fn handle_msg(
-        &self,
-        msg: Value,
-        msg_sender: Sender<SendMsg>,
-    ) -> anyhow::Result<()> {
+    async fn handle_msg(&self, msg: Value, msg_sender: Sender<SendMsg>) -> anyhow::Result<()> {
         match msg["data"]["topic"].as_str() {
             Some(topic) => {
                 if let Some(id) = topic.strip_prefix("community-points-channel-v1.") {
@@ -177,7 +179,9 @@ impl PubSubHandler {
                                     match response {
                                         Some(response) => {
                                             println!("Action executed, responding: {}", &response);
-                                            msg_sender.send(SendMsg::Say((channel.to_owned(), response))).await?
+                                            msg_sender
+                                                .send(SendMsg::Say((channel.to_owned(), response)))
+                                                .await?
                                         }
                                         None => println!("Action executed, no output"),
                                     }

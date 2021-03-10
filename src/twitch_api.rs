@@ -68,8 +68,9 @@ impl TwitchApi {
 
     async fn validate_oauth(oauth: &str) -> Result<ValidationResponse, reqwest::Error> {
         let client = Client::new();
-        let response = client.get("https://id.twitch.tv/oauth2/validate")
-            .header("Authorization", format!("Bearer {}", oauth)) 
+        let response = client
+            .get("https://id.twitch.tv/oauth2/validate")
+            .header("Authorization", format!("Bearer {}", oauth))
             .send()
             .await?;
         println!("Validating twitch API token: {}", response.status());
@@ -87,14 +88,13 @@ impl TwitchApi {
     }
 
     fn get_client_id(&self) -> &str {
-        self.headers
-            .get("Client-Id")
-            .unwrap()
-            .to_str()
-            .unwrap()
+        self.headers.get("Client-Id").unwrap().to_str().unwrap()
     }
 
-    pub async fn get_users_by_login(&self, logins: &Vec<String>) -> Result<UsersResponse, reqwest::Error> {
+    pub async fn get_users_by_login(
+        &self,
+        logins: &Vec<String>,
+    ) -> Result<UsersResponse, reqwest::Error> {
         let mut params: Vec<(&str, &str)> = Vec::new();
         for login in logins {
             params.push(("login", login));
@@ -110,8 +110,11 @@ impl TwitchApi {
             .json()
             .await?)
     }
-   
-    pub async fn get_users_by_id(&self, ids: &Vec<String>) -> Result<UsersResponse, reqwest::Error> {
+
+    pub async fn get_users_by_id(
+        &self,
+        ids: &Vec<String>,
+    ) -> Result<UsersResponse, reqwest::Error> {
         let mut params: Vec<(&str, &str)> = Vec::new();
         for id in ids {
             params.push(("id", id));
@@ -127,22 +130,34 @@ impl TwitchApi {
             .json()
             .await?)
     }
-    
-    pub async fn run_ad(&self, channel_login: &str, duration: u8) -> Result<String, reqwest::Error> {
-        let users = self.get_users_by_login(&vec![channel_login.to_string()]).await?;
+
+    pub async fn run_ad(
+        &self,
+        channel_login: &str,
+        duration: u8,
+    ) -> Result<String, reqwest::Error> {
+        let users = self
+            .get_users_by_login(&vec![channel_login.to_string()])
+            .await?;
         let channel_id = &users.data.first().unwrap().id;
 
         let mut headers = HeaderMap::new();
-        headers.insert("Authorization", format!("OAuth {}", self.get_oauth()).parse().unwrap());
+        headers.insert(
+            "Authorization",
+            format!("OAuth {}", self.get_oauth()).parse().unwrap(),
+        );
         headers.insert("Client", self.get_client_id().to_owned().parse().unwrap());
-        
+
         let mut payload = HashMap::new();
         // params.insert("channelID", channel_id);
         // params.insert("channelLogin", channel_login.to_owned());
         payload.insert("length", duration.to_string());
-        
-        let url = format!("https://api.twitch.tv/v5/channels/{}/commercial", channel_id);
-        
+
+        let url = format!(
+            "https://api.twitch.tv/v5/channels/{}/commercial",
+            channel_id
+        );
+
         Ok(self
             .client
             .post(&url)
@@ -151,7 +166,6 @@ impl TwitchApi {
             .send()
             .await?
             .text()
-            .await?
-        ) 
+            .await?)
     }
 }
