@@ -6,16 +6,10 @@ use channel_points::ChannelPointsRedeem;
 use futures_util::{SinkExt, StreamExt};
 use reqwest::Url;
 use serde_json::{json, Value};
-use tokio::{task, time::sleep};
+use tokio::{sync::mpsc::Sender, task, time::sleep};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
-use twitch_irc::{login::StaticLoginCredentials, TCPTransport, TwitchIRCClient};
 
-use crate::{
-    action_handler::Action,
-    command_handler::{Command, CommandHandler},
-    db::DBConn,
-    twitch_api::TwitchApi,
-};
+use crate::{action_handler::Action, bot::SendMsg, command_handler::{Command, CommandHandler}, db::DBConn, twitch_api::TwitchApi};
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -52,7 +46,7 @@ impl PubSubHandler {
     pub async fn start(
         &self,
         channels: &Vec<String>,
-        client: &TwitchIRCClient<TCPTransport, StaticLoginCredentials>,
+        msg_sender: Sender<SendMsg>
     ) -> anyhow::Result<()> {
         let mut topics: Vec<String> = Vec::new();
 
@@ -93,7 +87,6 @@ impl PubSubHandler {
         });
 
         {
-            let client = client.clone();
             let handler = self.clone();
             task::spawn(async move {
                 while let Some(msg) = read.next().await {
@@ -105,9 +98,9 @@ impl PubSubHandler {
                             Message::Text(text) => {
                                 if let Ok(v) = serde_json::from_str::<Value>(&text) {
                                     let handler = handler.clone();
-                                    let client = client.clone();
+                                    let msg_sender = msg_sender.clone();
                                     task::spawn(async move {
-                                        handler.handle_msg(v, client).await.unwrap();
+                                        handler.handle_msg(v, msg_sender).await.unwrap();
                                     });
                                 }
                             }
@@ -127,7 +120,7 @@ impl PubSubHandler {
     async fn handle_msg(
         &self,
         msg: Value,
-        client: TwitchIRCClient<TCPTransport, StaticLoginCredentials>,
+        msg_sender: Sender<SendMsg>,
     ) -> anyhow::Result<()> {
         match msg["data"]["topic"].as_str() {
             Some(topic) => {
@@ -176,7 +169,7 @@ impl PubSubHandler {
                                             &args,
                                             channel,
                                             &redeem.data.redemption.user.login,
-                                            client.clone(),
+                                            msg_sender.clone(),
                                         )
                                         .await
                                         .unwrap();
@@ -184,7 +177,7 @@ impl PubSubHandler {
                                     match response {
                                         Some(response) => {
                                             println!("Action executed, responding: {}", &response);
-                                            client.say(channel.to_owned(), response).await?;
+                                            msg_sender.send(SendMsg::Say((channel.to_owned(), response))).await?
                                         }
                                         None => println!("Action executed, no output"),
                                     }

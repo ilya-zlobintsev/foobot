@@ -1,11 +1,7 @@
 use anyhow::Result;
-use twitch_irc::{login::StaticLoginCredentials, TCPTransport, TwitchIRCClient};
+use tokio::sync::mpsc::Sender;
 
-use crate::{
-    action_handler::{Action, ActionHandler},
-    db::{DBConn, DBConnError},
-    twitch_api::TwitchApi,
-};
+use crate::{action_handler::{Action, ActionHandler}, bot::SendMsg, db::{DBConn, DBConnError}, twitch_api::TwitchApi};
 
 #[derive(Clone, Debug)]
 pub enum Permissions {
@@ -145,7 +141,7 @@ impl CommandHandler {
         args: &[&str],
         channel: &str,
         runner: &str,
-        client: TwitchIRCClient<TCPTransport, StaticLoginCredentials>,
+        msg_sender: Sender<SendMsg>
     ) -> Result<Option<String>, CommandHandlerError> {
         let mut response = String::new();
 
@@ -268,7 +264,7 @@ impl CommandHandler {
 
                         match self
                             .action_handler
-                            .run(action, &action_args, channel, &client)
+                            .run(action, &action_args, channel, msg_sender.clone())
                             .await
                         {
                             Ok(Some(action_response)) => response.push_str(&action_response),
