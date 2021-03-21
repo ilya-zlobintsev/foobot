@@ -82,6 +82,7 @@ impl ActionHandler {
 
         match action {
             "spotify" => Ok(Some(self.get_spotify(channel).await?)),
+            "spotify.playlist" => Ok(Some(self.get_spotify_playlist(channel).await?)),
             "lastsong" => Ok(Some(self.get_spotify_last_song(channel).await?)),
             "hitman" => Ok(match args.first() {
                 Some(name) => Some(
@@ -153,6 +154,25 @@ impl ActionHandler {
         }
     }
 
+    async fn get_spotify_playlist(&self, channel: &str) -> Result<String, CommandHandlerError> {
+        match self.db_conn.get_spotify_access_token(channel) {
+            Ok((access_token, _)) => {
+                match self
+                    .spotify_handler
+                    .get_current_playlist(&access_token)
+                    .await?
+                {
+                    Some(playlist) => Ok(playlist),
+                    None => Ok(String::from("not currently playing a playlist")),
+                }
+            }
+            Err(e) => match e {
+                DBConnError::NotFound => Ok(String::from("not configured for this channel")),
+                _ => Err(CommandHandlerError::DBError(e)),
+            },
+        }
+    }
+
     async fn get_spotify_last_song(&self, channel: &str) -> Result<String, CommandHandlerError> {
         match self.db_conn.get_spotify_access_token(channel) {
             Ok((access_token, _)) => {
@@ -161,15 +181,7 @@ impl ActionHandler {
                     .get_recently_played(&access_token)
                     .await
                 {
-                    Ok(recently_played) => {
-                        let last_track = &recently_played.items.first().unwrap().track;
-
-                        Ok(format!(
-                            "{} - {}",
-                            last_track.artists.first().unwrap().name,
-                            last_track.name
-                        ))
-                    }
+                    Ok(recently_played) => Ok(recently_played),
                     Err(e) => Ok(format!("error getting last song: {:?}", e)),
                 }
             }

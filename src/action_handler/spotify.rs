@@ -3,169 +3,6 @@ use std::collections::HashMap;
 use reqwest::Client;
 use serde_json::Value;
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UserRecentlyPlayed {
-    pub items: Vec<Item>,
-    pub next: String,
-    pub cursors: Cursors,
-    pub limit: i64,
-    pub href: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Item {
-    pub track: Track,
-    #[serde(rename = "played_at")]
-    pub played_at: String,
-    pub context: Option<Context>,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Track {
-    pub album: Album,
-    pub artists: Vec<Artist2>,
-    #[serde(rename = "available_markets")]
-    pub available_markets: Vec<String>,
-    #[serde(rename = "disc_number")]
-    pub disc_number: i64,
-    #[serde(rename = "duration_ms")]
-    pub duration_ms: i64,
-    pub explicit: bool,
-    #[serde(rename = "external_ids")]
-    pub external_ids: ExternalIds,
-    #[serde(rename = "external_urls")]
-    pub external_urls: ExternalUrls4,
-    pub href: String,
-    pub id: String,
-    #[serde(rename = "is_local")]
-    pub is_local: bool,
-    pub name: String,
-    pub popularity: i64,
-    #[serde(rename = "preview_url")]
-    pub preview_url: String,
-    #[serde(rename = "track_number")]
-    pub track_number: i64,
-    #[serde(rename = "type")]
-    pub type_field: String,
-    pub uri: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Album {
-    #[serde(rename = "album_type")]
-    pub album_type: String,
-    pub artists: Vec<Artist>,
-    #[serde(rename = "available_markets")]
-    pub available_markets: Vec<String>,
-    #[serde(rename = "external_urls")]
-    pub external_urls: ExternalUrls2,
-    pub href: String,
-    pub id: String,
-    pub images: Vec<Image>,
-    pub name: String,
-    #[serde(rename = "release_date")]
-    pub release_date: String,
-    #[serde(rename = "release_date_precision")]
-    pub release_date_precision: String,
-    #[serde(rename = "total_tracks")]
-    pub total_tracks: i64,
-    #[serde(rename = "type")]
-    pub type_field: String,
-    pub uri: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Artist {
-    #[serde(rename = "external_urls")]
-    pub external_urls: ExternalUrls,
-    pub href: String,
-    pub id: String,
-    pub name: String,
-    #[serde(rename = "type")]
-    pub type_field: String,
-    pub uri: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ExternalUrls {
-    pub spotify: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ExternalUrls2 {
-    pub spotify: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Image {
-    pub height: i64,
-    pub url: String,
-    pub width: i64,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Artist2 {
-    #[serde(rename = "external_urls")]
-    pub external_urls: ExternalUrls3,
-    pub href: String,
-    pub id: String,
-    pub name: String,
-    #[serde(rename = "type")]
-    pub type_field: String,
-    pub uri: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ExternalUrls3 {
-    pub spotify: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ExternalIds {
-    pub isrc: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ExternalUrls4 {
-    pub spotify: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Context {
-    #[serde(rename = "external_urls")]
-    pub external_urls: ExternalUrls5,
-    pub href: String,
-    #[serde(rename = "type")]
-    pub type_field: String,
-    pub uri: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ExternalUrls5 {
-    pub spotify: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Cursors {
-    pub after: String,
-    pub before: String,
-}
-
 #[derive(Clone)]
 pub struct SpotifyHandler {
     client_id: String,
@@ -181,7 +18,6 @@ impl SpotifyHandler {
             client: Client::new(),
         }
     }
-
     pub async fn get_current_song(
         &self,
         access_token: &str,
@@ -225,18 +61,52 @@ impl SpotifyHandler {
         }
     }
 
-    pub async fn get_recently_played(
+    pub async fn get_current_playlist(
         &self,
         access_token: &str,
-    ) -> Result<UserRecentlyPlayed, reqwest::Error> {
-        Ok(self
+    ) -> Result<Option<String>, reqwest::Error> {
+        let response = self
+            .client
+            .get("https://api.spotify.com/v1/me/player")
+            .header("Authorization", format!("Bearer {}", access_token))
+            .send()
+            .await?;
+
+        match response.json::<Value>().await {
+            Ok(v) => Ok(Some(
+                v["context"]["external_urls"]["spotify"]
+                    .as_str()
+                    .unwrap()
+                    .to_owned(),
+            )),
+            Err(e) => {
+                println!("Error {:?} when getting the playlist", e);
+                //Nothing is playing
+                Ok(None)
+            }
+        }
+    }
+
+    pub async fn get_recently_played(&self, access_token: &str) -> Result<String, reqwest::Error> {
+        match self
             .client
             .get("https://api.spotify.com/v1/me/player/recently-played")
             .header("Authorization", format!("Bearer {}", access_token))
             .send()
             .await?
-            .json()
-            .await?)
+            .json::<Value>()
+            .await
+        {
+            Ok(recently_played) => {
+                let last_track = &recently_played["items"][0]["track"];
+
+                let artist = last_track["artists"][0]["name"].as_str().unwrap();
+                let song = last_track["name"].as_str().unwrap();
+
+                Ok(format!("{} - {}", artist, song))
+            }
+            Err(e) => Ok(format!("error getting last song: {:?}", e)),
+        }
     }
 
     ///Returns new access token and the expiration time
