@@ -1,6 +1,6 @@
-FROM archlinux:latest as builder
+FROM rust:alpine as builder
 
-RUN pacman -Syu mariadb-clients rustup base-devel --noconfirm
+RUN apk add ca-certificates rustup mysql-client gcc libc-dev
 RUN rustup default nightly
 
 WORKDIR /build
@@ -9,10 +9,13 @@ COPY Cargo.toml .
 COPY src ./src
 
 RUN cargo build --release
+RUN strip trarget/release/foobot
 
+FROM alpine:latest
 
-FROM archlinux:latest
+WORKDIR /app
 
 COPY --from=builder /build/target/release/foobot .
+COPY templates ./templates
 
-CMD ["./foobot"]
+CMD ["/app/foobot"]

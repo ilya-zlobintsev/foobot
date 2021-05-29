@@ -28,11 +28,10 @@ async fn main() -> anyhow::Result<()> {
     let db_config = DBConfig::from_json(&db_config_json)?;
 
     let db_conn = DBConn::new(&db_config)?;
-
     {
         let db_conn = db_conn.clone();
         task::spawn(async move {
-            web::run(db_conn);
+            web::run(db_conn).await;
         });
     }
 

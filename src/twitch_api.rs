@@ -50,7 +50,11 @@ pub struct TwitchApi {
 
 impl TwitchApi {
     pub async fn init(oauth: &str) -> Result<Self, reqwest::Error> {
-        let oauth = oauth.strip_prefix("oauth:").unwrap();
+        let oauth = match oauth.strip_prefix("oauth:") {
+            Some(res) => res,
+            None => oauth,
+        };
+
         let validation = Self::validate_oauth(oauth).await?;
 
         let mut headers = HeaderMap::new();

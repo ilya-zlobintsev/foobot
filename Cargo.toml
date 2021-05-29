@@ -21,5 +21,5 @@ futures-util = ""
 psutil = "3.2"
 log = ""
 env_logger = ""
-rocket = "0.4"
-rocket_contrib = { version = "0.4", features = ["handlebars_templates"] }
+rocket = { git = "https://github.com/SergioBenitez/Rocket.git" }
+rocket_dyn_templates = { git = "https://github.com/SergioBenitez/Rocket.git", features = ["handlebars"] }
