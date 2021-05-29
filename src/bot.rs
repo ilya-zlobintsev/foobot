@@ -8,7 +8,7 @@ use tokio::{
 use twitch_irc::{
     login::StaticLoginCredentials,
     message::{PrivmsgMessage, ServerMessage},
-    ClientConfig, TCPTransport, TwitchIRCClient,
+    ClientConfig, SecureTCPTransport, TwitchIRCClient,
 };
 
 use crate::{
@@ -60,7 +60,7 @@ impl Bot {
 
         let config = ClientConfig::new_simple(self.config.login.to_owned());
         let (mut incoming_messages, client) =
-            TwitchIRCClient::<TCPTransport, StaticLoginCredentials>::new(config);
+            TwitchIRCClient::<SecureTCPTransport, StaticLoginCredentials>::new(config);
 
         let (msg_sender, msg_receiver) = mpsc::channel(1000);
         {
@@ -230,7 +230,7 @@ impl Bot {
 
     async fn listen_msg(
         mut receiver: Receiver<SendMsg>,
-        client: TwitchIRCClient<TCPTransport, StaticLoginCredentials>,
+        client: TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>,
     ) {
         println!("Starting message queue receiver");
         while let Some(msg) = receiver.recv().await {

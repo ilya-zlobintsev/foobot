@@ -1,6 +1,6 @@
 FROM rust:alpine as builder
 
-RUN apk add ca-certificates rustup mysql-client gcc libc-dev
+RUN apk add ca-certificates rustup mysql-client gcc libc-dev openssl-dev
 RUN rustup default nightly
 
 WORKDIR /build
