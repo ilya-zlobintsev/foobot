@@ -1,6 +1,6 @@
 FROM rust:alpine as builder
 
-RUN apk add ca-certificates rustup mysql-client gcc libc-dev openssl-dev
+RUN apk add ca-certificates rustup mysql-client gcc musl-dev openssl-dev
 RUN rustup default nightly
 
 WORKDIR /build
@@ -9,7 +9,7 @@ COPY Cargo.toml .
 COPY src ./src
 
 RUN cargo build --release
-RUN strip trarget/release/foobot
+RUN strip target/release/foobot
 
 FROM alpine:latest
 
